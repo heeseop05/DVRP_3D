@@ -19,7 +19,7 @@ if str(PROJECT_ROOT) not in sys.path:
 
 import config
 
-MIN_BUILDING_AREA_SQM = 1.0  # 건물 최소 면적 필터링 기준 (제곱미터)
+MIN_BUILDING_AREA_SQM = 50.0  # 건물 최소 면적 필터링 기준 (제곱미터) 1평 = 3.3058제곱미터
 DEFAULT_FLOOR_HEIGHT = getattr(config, "FLOOR_HEIGHT", 3.0)
 
 
@@ -163,11 +163,19 @@ def preprocess_data(terrain_gdf, building_gdf, spot_elevation_gdf):
         filtered_building_gdf[height_col] = 0
 
     # 'GRND_FLR' 컬럼을 숫자형으로 변환합니다. 존재하지 않거나 변환 실패 시 0으로 채웁니다.
-    if floor_col in filtered_building_gdf.columns:
+    has_ground_floor = floor_col in filtered_building_gdf.columns
+    if has_ground_floor:
         filtered_building_gdf[floor_col] = pd.to_numeric(filtered_building_gdf[floor_col], errors='coerce').fillna(0)
     else:
         print(f"    - 🚨 경고: '{floor_col}' 컬럼이 없어 높이 추정이 불가능합니다.")
         filtered_building_gdf[floor_col] = 0
+
+    if has_ground_floor:
+        zero_ground_mask = filtered_building_gdf[floor_col] == 0
+        zero_ground_count = int(zero_ground_mask.sum())
+        if zero_ground_count:
+            print(f"    - '{floor_col}'가 0인 {zero_ground_count}개 건물을 제외합니다.")
+            filtered_building_gdf = filtered_building_gdf[~zero_ground_mask].copy()
 
     if abs_col in filtered_building_gdf.columns:
         filtered_building_gdf[abs_col] = pd.to_numeric(filtered_building_gdf[abs_col], errors='coerce').fillna(0)
@@ -255,6 +263,8 @@ def preprocess_data(terrain_gdf, building_gdf, spot_elevation_gdf):
         print(f"    - 품질 필터로 {removed}개 건물을 제외했습니다. (높이/면적 조건 불충족)")
 
     processed_buildings = _sanitize_geometries(processed_buildings, MIN_BUILDING_AREA_SQM)
+    processed_buildings = processed_buildings.reset_index(drop=True)
+    processed_buildings['unique_id'] = processed_buildings.index
     if 'ABSOLUTE_HEIGHT_SOURCE' in processed_buildings.columns:
         processed_buildings = processed_buildings.drop(columns=['ABSOLUTE_HEIGHT_SOURCE'])
 
@@ -326,6 +336,13 @@ def visualize_2d(terrain, buildings, config):
                          ax=ax,
                          legend=True,             # 색상 범례 표시
                          legend_kwds={'label': "Absolute Height (m)", 'orientation': "vertical", 'shrink': 0.5, 'aspect': 30})
+
+    if 'unique_id' in buildings_wgs84.columns:
+        for _, row in buildings_wgs84.iterrows():
+            if row.geometry:
+                centroid = row.geometry.centroid
+                ax.text(centroid.x, centroid.y, str(int(row['unique_id'])),
+                        fontsize=6, color='black', ha='center', va='center')
     
     # 5. 그래프의 x, y축 레이블과 제목을 설정합니다.
     ax.set_xlabel("Longitude")
@@ -357,6 +374,7 @@ def visualize_3d(terrain, buildings, config):
 
     # 2. 건물 시각화
     if not buildings.empty:
+        has_unique_id = 'unique_id' in buildings.columns
         # 건물의 절대 높이에 따라 색상을 매핑하기 위한 준비
         min_h, max_h = buildings['ABSOLUTE_HEIGHT'].min(), buildings['ABSOLUTE_HEIGHT'].max()
         cmap, norm = plt.get_cmap('plasma'), colors.Normalize(vmin=min_h, vmax=max_h if max_h > min_h else min_h + 1)
@@ -377,6 +395,10 @@ def visualize_3d(terrain, buildings, config):
                 # 건물 벽(기둥) 그리기: 각 꼭짓점에서 밑면과 윗면을 잇는 수직선
                 for i in range(len(x)):
                     ax.plot([x[i], x[i]], [y[i], y[i]], [z_bottom, z_top], color=color, linewidth=1, zorder=2)
+                if has_unique_id:
+                    centroid = row.geometry.centroid
+                    ax.text(centroid.x, centroid.y, z_top + 1, str(int(row['unique_id'])),
+                            color='black', fontsize=6, zorder=4)
         
         # 3. 컬러바 추가: 색상이 어떤 높이 값을 의미하는지 보여주는 범례
         mappable = cm.ScalarMappable(norm=norm, cmap=cmap)

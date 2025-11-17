@@ -28,7 +28,7 @@ BUILDING_MIN_SIZE = 20  # Minimum width/depth
 BUILDING_MAX_SIZE = 80  # Maximum width/depth
 BUILDING_MIN_HEIGHT = 50  # Minimum building height (Y-axis)
 BUILDING_MAX_HEIGHT = 200  # Maximum building height (Y-axis)
-FLOOR_HEIGHT = 3.0  # Height of each floor in meters
+FLOOR_HEIGHT = 4.0  # Height of each floor in meters
 BUILDING_SAFETY_MARGIN = 15.0  # Safety distance between buildings (in meters)
 BUILDING_HEIGHT_SCALE = 1  # Multiplier to globally scale real-world building heights
 VISUALIZATION_HEIGHT_SCALE = 1.0  # Multiplier applied only when rendering in Ursina
@@ -93,10 +93,10 @@ MAP_DATA_DIR = PROJECT_ROOT / "src" / "map"
 
 BUILDINGS_DATA_CONFIG = {
     "terrain_contour_paths": [
-        MAP_DATA_DIR / "국가기본공간정보_포스텍_이동_효자_SK뷰" / "NF_L_F01000_L_F01000_000000.shp",
+        MAP_DATA_DIR / "국가기본공간정보_포스텍" / "NF_L_F01000_L_F01000_000000.shp",
     ],
     "spot_elevation_paths": [
-        MAP_DATA_DIR / "국가기본공간정보_포스텍_이동_효자_SK뷰" / "NF_P_F02000_P_F02000_000000.shp",
+        MAP_DATA_DIR / "국가기본공간정보_포스텍" / "NF_P_F02000_P_F02000_000000.shp",
     ],
     "building_paths": [
         MAP_DATA_DIR / "F_FAC_BUILDING_경북_포항시_남구_북구" / "F_FAC_BUILDING_47111_202507.shp",
